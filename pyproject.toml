@@ -1,7 +1,7 @@
 [project]
 name = "grafo-transferencias-futebol"
 version = "0.1.0"
-description = "Projeto de visualização de transfêrencias de times de futebol em grafos"
+description = "Projeto de visualização de transferências de times de futebol em grafos"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

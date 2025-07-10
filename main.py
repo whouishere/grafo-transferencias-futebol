@@ -1,3 +1,6 @@
+import os
+import sys
+
 from bs4 import BeautifulSoup
 import httpx
 
@@ -6,6 +9,7 @@ def read_from_file(filename: str) -> str:
         return f.read()
 
 def read_from_url(url: str) -> str:
+    print(f"Baixando dados de {url}...")
     req = httpx.request("GET", url)
     if req.status_code != 200:
         raise RuntimeError(f"request returned {req.status_code}")
@@ -17,8 +21,26 @@ def main():
     year = int(input("Ano de transferências: "))
 
     url = f"https://www.transfermarkt.com/{team_id}/kader/verein/{verein_id}/saison_id/{year-1}/plus/1"
+    html: str
 
-    html = read_from_url(url)
+    # when in debug mode, fetch html data from cache folder
+    # (in order not to send a ton of requests while just debugging)
+    if "debug" in sys.argv[1]:
+        print("--- DEBUG MODE ---")
+
+        if not os.path.exists("samples/"):
+            os.mkdir("samples")
+
+        filepath = f"samples/{team_id}{verein_id}{year}.html"
+        if not os.path.exists(filepath):
+            html = read_from_url(url)
+            with open(filepath, "w") as f:
+                f.write(html)
+        else:
+            html = read_from_file(filepath)
+    else:
+        html = read_from_url(url)
+
     soup = BeautifulSoup(html, "html.parser")
 
     team = soup.find("header", {"class": "data-header"}).find("h1", {"class": "data-header__headline-wrapper"}).string.strip()
