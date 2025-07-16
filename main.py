@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Self
+from typing import Optional, Self
 
 from bs4 import BeautifulSoup
 import httpx
@@ -11,9 +11,14 @@ def read_from_file(filename: str) -> str:
 
 def read_from_url(url: str) -> str:
     print(f"Baixando dados de {url}...")
-    req = httpx.request("GET", url)
+
+    try:
+        req = httpx.request("GET", url, timeout=60.0)
+    except httpx.ReadTimeout:
+        raise RuntimeError("Timeout de download dos dados")
+
     if req.status_code != 200:
-        raise RuntimeError(f"request returned {req.status_code}")
+        raise RuntimeError(f"Fonte de dados retornou erro {req.status_code}")
     return req.read().decode()
 
 class MarktTeamConnection:
@@ -28,11 +33,28 @@ class MarktTeamConnection:
         self.verein = verein
         self.transfers = 1
 
-    def find_in_list(self, b: list[Self]) -> int:
+    def find_in_list(self, b: list[Self]) -> Optional[int]:
         for i, team in enumerate(b):
             if self.id == team.id and self.verein == team.verein:
                 return i
-        return -1
+        return None
+
+class TeamNode:
+    def __init__(self, id: int, label: str) -> None:
+        self.id = id
+        self.label = label
+
+    def is_in_list(self, b: list[Self]) -> bool:
+        for node in b:
+            if self.id == node.id:
+                return True
+        return False
+
+class TeamEdge:
+    def __init__(self, from_id: int, to_id: int, weight: int) -> None:
+        self.from_id = from_id
+        self.to_id = to_id
+        self.weight = weight
 
 def main():
     team_id = input("Time ID do transfermarkt: ")
@@ -66,6 +88,12 @@ def main():
     print(f"Transferências de {team} em {year}:")
 
     connections_from: list[MarktTeamConnection] = []
+    nodes: list[TeamNode] = []
+    edges: list[TeamEdge] = []
+
+    new_node = TeamNode(int(verein_id), team)
+    if not new_node.is_in_list(nodes):
+        nodes.append(new_node)
 
     # all the data is inside the zentriet class table items
     results = soup.find_all("td", {"class": "zentriert"})
@@ -84,7 +112,7 @@ def main():
             # route_split[1] is team id and route_split[4] is team verein
             connection = MarktTeamConnection(route_split[1], route_split[4])
             idx = connection.find_in_list(connections_from)
-            if idx == -1: # not found
+            if idx == None: # not found
                 connections_from.append(connection)
             else:
                 connections_from[idx].transfers += 1
@@ -95,11 +123,27 @@ def main():
 
             joined = elem.string
 
-            print(f"\t{player} ({signed_from}) - {joined}")
+            new_node = TeamNode(int(connection.verein), signed_from)
+            if not new_node.is_in_list(nodes):
+                nodes.append(new_node)
 
-    print(f"{len(connections_from)} transferências ao total.\n")
     for team in connections_from:
-        print(f"{team.id}/{team.verein} ({team.transfers})")
+        edges.append(TeamEdge(int(team.verein), int(verein_id), team.transfers))
+
+    print("\nVértices:")
+    for node in nodes:
+        print(f"\t{node.id} - {node.label}")
+
+    print("\nArestas:")
+    for edge in edges:
+        from_team = ""
+        to_team = ""
+        for node in nodes:
+            if edge.from_id == node.id:
+                from_team = node.label
+            if edge.to_id == node.id:
+                to_team = node.label
+        print(f"\t{from_team} -> {to_team} ({edge.weight})")
 
 if __name__ == "__main__":
     main()
