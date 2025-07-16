@@ -56,12 +56,11 @@ class TeamEdge:
         self.to_id = to_id
         self.weight = weight
 
-def main():
-    team_id = input("Time ID do transfermarkt: ")
-    verein_id = input("Time ID serial (verein) do transfermarkt: ")
-    year = int(input("Ano de transferências: "))
+nodes: list[TeamNode] = []
+edges: list[TeamEdge] = []
 
-    url = f"https://www.transfermarkt.com/{team_id}/kader/verein/{verein_id}/saison_id/{year-1}/plus/1"
+def parse_team(name_id: str, verein_id: int, year: int) -> list[MarktTeamConnection]:
+    url = f"https://www.transfermarkt.com/{name_id}/kader/verein/{verein_id}/saison_id/{year-1}/plus/1"
     html: str
 
     # when in debug mode, fetch html data from cache folder
@@ -72,7 +71,7 @@ def main():
         if not os.path.exists("samples/"):
             os.mkdir("samples")
 
-        filepath = f"samples/{team_id}{verein_id}{year}.html"
+        filepath = f"samples/{name_id}{verein_id}{year}.html"
         if not os.path.exists(filepath):
             html = read_from_url(url)
             with open(filepath, "w") as f:
@@ -83,17 +82,13 @@ def main():
         html = read_from_url(url)
 
     soup = BeautifulSoup(html, "html.parser")
-
     team = soup.find("header", {"class": "data-header"}).find("h1", {"class": "data-header__headline-wrapper"}).string.strip()
-    print(f"Transferências de {team} em {year}:")
-
-    connections_from: list[MarktTeamConnection] = []
-    nodes: list[TeamNode] = []
-    edges: list[TeamEdge] = []
 
     new_node = TeamNode(int(verein_id), team)
     if not new_node.is_in_list(nodes):
         nodes.append(new_node)
+
+    connections_from: list[MarktTeamConnection] = []
 
     # all the data is inside the zentriet class table items
     results = soup.find_all("td", {"class": "zentriert"})
@@ -117,18 +112,20 @@ def main():
             else:
                 connections_from[idx].transfers += 1
 
-            # table item with the player image tag is somewhere before joined date element
-            name_table = elem.find_previous_sibling("td", {"class": "posrela"})
-            player = name_table.find_all("img", {"class": "bilderrahmen-fixed lazy lazy"})[0].get("alt")
-
-            joined = elem.string
-
             new_node = TeamNode(int(connection.verein), signed_from)
             if not new_node.is_in_list(nodes):
                 nodes.append(new_node)
 
-    for team in connections_from:
-        edges.append(TeamEdge(int(team.verein), int(verein_id), team.transfers))
+    return connections_from
+
+def main():
+    name_id = input("Time ID do transfermarkt: ")
+    verein_id = int(input("Time ID serial (verein) do transfermarkt: "))
+    year = int(input("Ano de transferências: "))
+
+    connections_from = parse_team(name_id, verein_id, year)
+    for connection in connections_from:
+        edges.append(TeamEdge(int(connection.verein), verein_id, connection.transfers))
 
     print("\nVértices:")
     for node in nodes:
