@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from typing import Optional, Self
 
 from bs4 import BeautifulSoup
@@ -65,20 +66,23 @@ def parse_team(name_id: str, verein_id: int, year: int) -> list[MarktTeamConnect
 
     # when in debug mode, fetch html data from cache folder
     # (in order not to send a ton of requests while just debugging)
+    timeout = 10
     if "debug" in sys.argv[1]:
-        print("--- DEBUG MODE ---")
-
         if not os.path.exists("samples/"):
             os.mkdir("samples")
 
         filepath = f"samples/{name_id}{verein_id}{year}.html"
         if not os.path.exists(filepath):
+            print(f"Esperando {timeout} segundos para coletar o próximo dado...")
+            time.sleep(timeout)
             html = read_from_url(url)
             with open(filepath, "w") as f:
                 f.write(html)
         else:
             html = read_from_file(filepath)
     else:
+        print(f"Esperando {timeout} segundos para coletar o próximo dado...")
+        time.sleep(timeout)
         html = read_from_url(url)
 
     soup = BeautifulSoup(html, "html.parser")
@@ -119,6 +123,7 @@ def parse_team(name_id: str, verein_id: int, year: int) -> list[MarktTeamConnect
     return connections_from
 
 def main():
+    print("--- DEBUG MODE ---")
     name_id = input("Time ID do transfermarkt: ")
     verein_id = int(input("Time ID serial (verein) do transfermarkt: "))
     year = int(input("Ano de transferências: "))
@@ -126,6 +131,10 @@ def main():
     connections_from = parse_team(name_id, verein_id, year)
     for connection in connections_from:
         edges.append(TeamEdge(int(connection.verein), verein_id, connection.transfers))
+
+        new_connections = parse_team(connection.id, int(connection.verein), year)
+        for new_connection in new_connections:
+            edges.append(TeamEdge(int(new_connection.verein), int(connection.verein), new_connection.transfers))
 
     print("\nVértices:")
     for node in nodes:
