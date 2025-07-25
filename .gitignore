@@ -11,3 +11,7 @@ wheels/
 
 # Local HTML testing samples
 samples/
+
+# Data output
+*.csv
+*.gephi

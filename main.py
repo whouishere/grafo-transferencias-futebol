@@ -1,3 +1,4 @@
+import csv
 import os
 import sys
 import time
@@ -136,20 +137,17 @@ def main():
         for new_connection in new_connections:
             edges.append(TeamEdge(int(new_connection.verein), int(connection.verein), new_connection.transfers))
 
-    print("\nVértices:")
-    for node in nodes:
-        print(f"\t{node.id} - {node.label}")
-
-    print("\nArestas:")
-    for edge in edges:
-        from_team = ""
-        to_team = ""
+    with open(f"vertices_{year}.csv", "w", newline="") as file:
+        node_writer = csv.writer(file)
+        node_writer.writerow(["Id", "Label"])
         for node in nodes:
-            if edge.from_id == node.id:
-                from_team = node.label
-            if edge.to_id == node.id:
-                to_team = node.label
-        print(f"\t{from_team} -> {to_team} ({edge.weight})")
+            node_writer.writerow([str(node.id), node.label])
+
+    with open(f"arestas_{year}.csv", "w", newline="") as file:
+        edge_writer = csv.writer(file)
+        edge_writer.writerow(["Source", "Target", "Weight"])
+        for edge in edges:
+            edge_writer.writerow([str(edge.from_id), str(edge.to_id), str(edge.weight)])
 
 if __name__ == "__main__":
     main()
