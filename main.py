@@ -1,6 +1,5 @@
 import csv
 import os
-import sys
 import time
 from typing import Optional, Self
 
@@ -68,23 +67,18 @@ def parse_team(name_id: str, verein_id: int, year: int) -> list[MarktTeamConnect
     # when in debug mode, fetch html data from cache folder
     # (in order not to send a ton of requests while just debugging)
     timeout = 10
-    if "debug" in sys.argv[1]:
-        if not os.path.exists("samples/"):
-            os.mkdir("samples")
+    if not os.path.exists("samples/"):
+        os.mkdir("samples")
 
-        filepath = f"samples/{name_id}{verein_id}{year}.html"
-        if not os.path.exists(filepath):
-            print(f"Esperando {timeout} segundos para coletar o próximo dado...")
-            time.sleep(timeout)
-            html = read_from_url(url)
-            with open(filepath, "w") as f:
-                f.write(html)
-        else:
-            html = read_from_file(filepath)
-    else:
+    filepath = f"samples/{name_id}{verein_id}{year}.html"
+    if not os.path.exists(filepath):
         print(f"Esperando {timeout} segundos para coletar o próximo dado...")
         time.sleep(timeout)
         html = read_from_url(url)
+        with open(filepath, "w") as f:
+            f.write(html)
+    else:
+        html = read_from_file(filepath)
 
     soup = BeautifulSoup(html, "html.parser")
     team = soup.find("header", {"class": "data-header"}).find("h1", {"class": "data-header__headline-wrapper"}).string.strip()
@@ -124,7 +118,6 @@ def parse_team(name_id: str, verein_id: int, year: int) -> list[MarktTeamConnect
     return connections_from
 
 def main():
-    print("--- DEBUG MODE ---")
     name_id = input("Time ID do transfermarkt: ")
     verein_id = int(input("Time ID serial (verein) do transfermarkt: "))
     year = int(input("Ano de transferências: "))
@@ -137,17 +130,21 @@ def main():
         for new_connection in new_connections:
             edges.append(TeamEdge(int(new_connection.verein), int(connection.verein), new_connection.transfers))
 
-    with open(f"vertices_{year}.csv", "w", newline="") as file:
+    filename = f"vertices_{year}.csv"
+    with open(filename, "w", newline="") as file:
         node_writer = csv.writer(file)
         node_writer.writerow(["Id", "Label"])
         for node in nodes:
             node_writer.writerow([str(node.id), node.label])
+    print(f"Dados de vértices salvos em {filename}")
 
-    with open(f"arestas_{year}.csv", "w", newline="") as file:
+    filename = f"arestas_{year}.csv"
+    with open(filename, "w", newline="") as file:
         edge_writer = csv.writer(file)
         edge_writer.writerow(["Source", "Target", "Weight"])
         for edge in edges:
             edge_writer.writerow([str(edge.from_id), str(edge.to_id), str(edge.weight)])
+    print(f"Dados de arestas salvos em {filename}")
 
 if __name__ == "__main__":
     main()
