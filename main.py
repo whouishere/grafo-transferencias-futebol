@@ -25,6 +25,11 @@ def read_from_url(url: str) -> str:
         raise RuntimeError("Timeout de download dos dados")
 
     if req.status_code != 200:
+        if req.status_code == 503:
+            timeout = 5
+            print(f"Fonte respondeu erro 503 Serviço Indisponível, tentando novamente em {timeout} segundos...")
+            time.sleep(timeout)
+            return read_from_url(url)
         raise StatusError(req.status_code)
     return req.read().decode()
 
@@ -84,7 +89,7 @@ def parse_team(name_id: str, verein_id: int, year: int) -> list[MarktTeamConnect
             html = read_from_url(url)
         except StatusError as err:
             # bail out on non-existent teams
-            if err.code == 301:
+            if err.code == 301 or err.code == 302:
                 # write it anyway to avoid making the same request again in a future run
                 with open(filepath, "w") as f:
                     f.write("")
