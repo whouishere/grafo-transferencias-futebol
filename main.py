@@ -89,6 +89,8 @@ def parse_team(name_id: str, verein_id: int, year: int) -> list[MarktTeamConnect
                 with open(filepath, "w") as f:
                     f.write("")
                 return []
+            else:
+                raise
 
         with open(filepath, "w") as f:
             f.write(html)
@@ -151,23 +153,28 @@ def collect_team_tree(curr_name_id: str, curr_verein_id: int, year: int, total_d
 def main():
     name_id: str
     verein_id: int
-    year: int
+    year_start: int
+    year_end: int
     depth: int
 
     if len(sys.argv) > 1:
         name_id = sys.argv[1]
         verein_id = int(sys.argv[2])
-        year = int(sys.argv[3])
-        depth = int(sys.argv[4])
+        year_start = int(sys.argv[3])
+        year_end = int(sys.argv[4])
+        depth = int(sys.argv[5])
     else:
         name_id = input("Time ID do transfermarkt: ")
         verein_id = int(input("Time ID serial (verein) do transfermarkt: "))
-        year = int(input("Ano de transferências: "))
+        year_start = int(input("Primeiro ano do período de transferências: "))
+        year_end = int(input("Último ano do período de transferências: "))
         depth = int(input("Profundidade da coleta: "))
 
-    collect_team_tree(name_id, verein_id, year, depth)
-        
-    filename = f"vertices_{year}.csv"
+    for year in range(year_start, year_end + 1):
+        collect_team_tree(name_id, verein_id, year, depth)
+
+    print("\nSalvando dados...")
+    filename = f"vertices_{year_start}{year_end}.csv"
     with open(filename, "w", newline="") as file:
         node_writer = csv.writer(file)
         node_writer.writerow(["Id", "Label"])
@@ -175,7 +182,7 @@ def main():
             node_writer.writerow([str(node.id), node.label])
     print(f"Dados de vértices salvos em {filename}")
 
-    filename = f"arestas_{year}.csv"
+    filename = f"arestas_{year_start}{year_end}.csv"
     with open(filename, "w", newline="") as file:
         edge_writer = csv.writer(file)
         edge_writer.writerow(["Source", "Target", "Weight"])
