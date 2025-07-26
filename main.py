@@ -1,10 +1,16 @@
 import csv
 import os
+import sys
 import time
 from typing import Optional, Self
 
 from bs4 import BeautifulSoup
 import httpx
+
+class StatusError(Exception):
+    def __init__(self, code: int) -> None:
+        super().__init__(f"Fonte de dados retornou erro {code}")
+        self.code = code
 
 def read_from_file(filename: str) -> str:
     with open(filename) as f:
@@ -19,7 +25,7 @@ def read_from_url(url: str) -> str:
         raise RuntimeError("Timeout de download dos dados")
 
     if req.status_code != 200:
-        raise RuntimeError(f"Fonte de dados retornou erro {req.status_code}")
+        raise StatusError(req.status_code)
     return req.read().decode()
 
 class MarktTeamConnection:
@@ -74,12 +80,24 @@ def parse_team(name_id: str, verein_id: int, year: int) -> list[MarktTeamConnect
     if not os.path.exists(filepath):
         print(f"Esperando {timeout} segundos para coletar o próximo dado...")
         time.sleep(timeout)
-        html = read_from_url(url)
+        try:
+            html = read_from_url(url)
+        except StatusError as err:
+            # bail out on non-existent teams
+            if err.code == 301:
+                # write it anyway to avoid making the same request again in a future run
+                with open(filepath, "w") as f:
+                    f.write("")
+                return []
+
         with open(filepath, "w") as f:
             f.write(html)
     else:
         html = read_from_file(filepath)
 
+    # bail out on faulty data
+    if html == "":
+        return []
     soup = BeautifulSoup(html, "html.parser")
     team = soup.find("header", {"class": "data-header"}).find("h1", {"class": "data-header__headline-wrapper"}).string.strip()
 
@@ -117,19 +135,38 @@ def parse_team(name_id: str, verein_id: int, year: int) -> list[MarktTeamConnect
 
     return connections_from
 
-def main():
-    name_id = input("Time ID do transfermarkt: ")
-    verein_id = int(input("Time ID serial (verein) do transfermarkt: "))
-    year = int(input("Ano de transferências: "))
+depth_iter = 0
 
-    connections_from = parse_team(name_id, verein_id, year)
+def collect_team_tree(curr_name_id: str, curr_verein_id: int, year: int, total_depth: int):
+    connections_from = parse_team(curr_name_id, curr_verein_id, year)
     for connection in connections_from:
-        edges.append(TeamEdge(int(connection.verein), verein_id, connection.transfers))
+        edges.append(TeamEdge(int(connection.verein), curr_verein_id, connection.transfers))
 
-        new_connections = parse_team(connection.id, int(connection.verein), year)
-        for new_connection in new_connections:
-            edges.append(TeamEdge(int(new_connection.verein), int(connection.verein), new_connection.transfers))
+        global depth_iter
+        if depth_iter < total_depth:
+            depth_iter += 1
+            collect_team_tree(connection.id, int(connection.verein), year, total_depth)
+            depth_iter -= 1
 
+def main():
+    name_id: str
+    verein_id: int
+    year: int
+    depth: int
+
+    if len(sys.argv) > 1:
+        name_id = sys.argv[1]
+        verein_id = int(sys.argv[2])
+        year = int(sys.argv[3])
+        depth = int(sys.argv[4])
+    else:
+        name_id = input("Time ID do transfermarkt: ")
+        verein_id = int(input("Time ID serial (verein) do transfermarkt: "))
+        year = int(input("Ano de transferências: "))
+        depth = int(input("Profundidade da coleta: "))
+
+    collect_team_tree(name_id, verein_id, year, depth)
+        
     filename = f"vertices_{year}.csv"
     with open(filename, "w", newline="") as file:
         node_writer = csv.writer(file)
