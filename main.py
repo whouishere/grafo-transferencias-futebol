@@ -25,9 +25,9 @@ def read_from_url(url: str) -> str:
         raise RuntimeError("Timeout de download dos dados")
 
     if req.status_code != 200:
-        if req.status_code == 503:
+        if req.status_code == 500 or req.status_code == 502 or req.status_code == 503 or req.status_code == 504:
             timeout = 5
-            print(f"Fonte respondeu erro 503 Serviço Indisponível, tentando novamente em {timeout} segundos...")
+            print(f"Erro no servidor da fonte de dados ({req.status_code}), tentando novamente em {timeout} segundos...")
             time.sleep(timeout)
             return read_from_url(url)
         raise StatusError(req.status_code)
@@ -179,7 +179,7 @@ def main():
         collect_team_tree(name_id, verein_id, year, depth)
 
     print("\nSalvando dados...")
-    filename = f"vertices_{year_start}{year_end}.csv"
+    filename = f"vertices_{name_id}_{year_start}{year_end}.csv"
     with open(filename, "w", newline="") as file:
         node_writer = csv.writer(file)
         node_writer.writerow(["Id", "Label"])
@@ -187,7 +187,7 @@ def main():
             node_writer.writerow([str(node.id), node.label])
     print(f"Dados de vértices salvos em {filename}")
 
-    filename = f"arestas_{year_start}{year_end}.csv"
+    filename = f"arestas_{name_id}_{year_start}{year_end}.csv"
     with open(filename, "w", newline="") as file:
         edge_writer = csv.writer(file)
         edge_writer.writerow(["Source", "Target", "Weight"])
