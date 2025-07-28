@@ -72,7 +72,7 @@ nodes: list[TeamNode] = []
 edges: list[TeamEdge] = []
 
 def parse_team(name_id: str, verein_id: int, year: int) -> list[MarktTeamConnection]:
-    url = f"https://www.transfermarkt.com/{name_id}/kader/verein/{verein_id}/saison_id/{year-1}/plus/1"
+    url = f"https://www.transfermarkt.com/{name_id}/kader/verein/{verein_id}/saison_id/{year}/plus/1"
     html: str
 
     # when in debug mode, fetch html data from cache folder
