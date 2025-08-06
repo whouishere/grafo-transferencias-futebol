@@ -178,13 +178,74 @@ def main():
     for year in range(year_start, year_end + 1):
         collect_team_tree(name_id, verein_id, year, depth)
 
+    # verein id of teams that will be included
+    teams_filter = [
+        985, # Manchester United
+        281, # Manchester City
+        31, # Liverpool
+        631, # Chelsea
+        11, # Arsenal
+        148, # Tottenham
+        418, # Real Madrid
+        131, # Barcelona
+        13, # Atletico de Madrid
+        368, # Sevilla
+        27, # Bayern Munich
+        16, # Borussia Dortmund
+        23826, # RB Leipzig
+        506, # Juventus
+        5, # Milan
+        46, # Inter Milan
+        6195, # Napoli
+        583, # Paris Saint-Germain
+        244, # Olympique Marseille
+        1041, # Olympique Lyon
+        610, # Ajax
+        294, # Benfica
+        371, # Celtic
+        614, # Flamengo
+        1023, # Palmeiras
+        585, # São Paulo
+        199, # Corinthians
+        210, # Grêmio
+        330, # Atlético Mineiro
+        189, # Boca Juniors
+        209, # River Plate
+        1444, # Racing Club
+        1234, # Independiente
+        866, # Nacional
+        861, # Peñarol
+        2433, # Colo-Colo
+        629, # Olimpia
+        8172, # Atlético Nacional
+        9855, # LDU Quito
+        1061, # LA Galaxy
+        69261, # Inter Miami
+        40058, # New York City FC
+        3631, # América
+        7055, # Tigres UANL
+        7, # Al Ahly
+        664, # Zamalek
+        3342, # Esperance Tunis
+        8428, # TP Mazembe
+        2068, # Raja Casablanca
+        828, # Urawa Red Diamonds
+        2241, # Kashima Antlers
+        27190, # Shanghai Port
+        3176, # Beijing Guoan
+        18544, # Al-Nassr
+        1114, # Al-Hilal
+    ]
+
     print("\nSalvando dados...")
     filename = f"vertices_{name_id}_{year_start}{year_end}.csv"
     with open(filename, "w", newline="") as file:
         node_writer = csv.writer(file)
         node_writer.writerow(["Id", "Label"])
         for node in nodes:
-            node_writer.writerow([str(node.id), node.label])
+            # filter teams
+            if node.id in teams_filter:
+                node_writer.writerow([str(node.id), node.label])
     print(f"Dados de vértices salvos em {filename}")
 
     filename = f"arestas_{name_id}_{year_start}{year_end}.csv"
@@ -192,7 +253,9 @@ def main():
         edge_writer = csv.writer(file)
         edge_writer.writerow(["Source", "Target", "Weight"])
         for edge in edges:
-            edge_writer.writerow([str(edge.from_id), str(edge.to_id), str(edge.weight)])
+            # filter teams
+            if edge.from_id in teams_filter and edge.to_id in teams_filter:
+                edge_writer.writerow([str(edge.from_id), str(edge.to_id), str(edge.weight)])
     print(f"Dados de arestas salvos em {filename}")
 
 if __name__ == "__main__":
